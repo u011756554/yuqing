@@ -2,7 +2,11 @@ package com.app.yuqing.net;
 
 public class URLUtils {
 
-	private static final String SERVER = "http://new.sevencai.com:8000/";
+	//正式环境
+//	private static final String SERVER = "http://new.sevencai.com:8000/";
+
+	//测试环境
+	private static final String SERVER = "http://new.sevencai.cn:8000/";
 	
 //	private static final String SERVER = "http://121.41.77.80:8080/";
 
