@@ -1,10 +1,13 @@
 package com.app.yuqing.activity;
 
 import io.rong.imkit.RongIM;
+import io.rong.imlib.RongIMClient;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import com.app.yuqing.AppContext;
+import com.app.yuqing.MyApplication;
 import com.app.yuqing.R;
 import com.app.yuqing.bean.GroupBean;
 import com.app.yuqing.bean.PersonalBean;
@@ -24,10 +27,13 @@ import com.app.yuqing.view.BaseDialog.DialogListener;
 import com.app.yuqing.view.VersionUpdateDialog;
 import com.lidroid.xutils.view.annotation.ViewInject;
 
+import android.app.DownloadManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.text.TextUtils;
@@ -74,6 +80,17 @@ public class MainActivity extends BaseActivity {
 		initFragment();
 		initView();
 		getData();
+		RongIM.setConnectionStatusListener(new RongIMClient.ConnectionStatusListener() {
+			@Override
+			public void onChanged(ConnectionStatus connectionStatus) {
+				if (connectionStatus == ConnectionStatus.KICKED_OFFLINE_BY_OTHER_CLIENT) {
+					CommonUtils.showToast("被其它设备登录");
+					Intent intent = new Intent(MainActivity.this,LoginActivity.class);
+					startActivity(intent);
+					MyApplication.instance.exit();
+				}
+			}
+		});
 	}
 
 	@Override
@@ -230,9 +247,10 @@ public class MainActivity extends BaseActivity {
 							@Override
 							public void update(Object object) {
 								if ("true".equals((String)object)) {
-									Intent intent = new Intent(Intent.ACTION_VIEW);
-									intent.setData(Uri.parse(bean.getData().getDownloadUrl()));
-									startActivity(intent);
+//									Intent intent = new Intent(Intent.ACTION_VIEW);
+//									intent.setData(Uri.parse(bean.getData().getDownloadUrl()));
+//									startActivity(intent);
+									downLoadAPK(MainActivity.this,bean.getData().getDownloadUrl());
 								}
 							}
 						});
@@ -299,5 +317,43 @@ public class MainActivity extends BaseActivity {
 		intent.addCategory(Intent.CATEGORY_HOME);
 		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		this.startActivity(intent);
-	}	
+	}
+
+	/**
+	 * 下载新版本
+	 *
+	 * @param context
+	 * @param url
+	 */
+	public void downLoadAPK(Context context, String url) {
+
+		if (TextUtils.isEmpty(url)) {
+			return;
+		}
+
+		try {
+			String serviceString = Context.DOWNLOAD_SERVICE;
+			DownloadManager downloadManager = (DownloadManager) context.getSystemService(serviceString);
+
+			Uri uri = Uri.parse(url);
+			DownloadManager.Request request = new DownloadManager.Request(uri);
+			request.allowScanningByMediaScanner();
+			request.setVisibleInDownloadsUi(true);
+			request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+			request.setMimeType("application/vnd.android.package-archive");
+
+			File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath()+"/yuqing/","yuqing.apk");
+			if (file.exists()){
+				file.delete();
+			} else if (!file.getParentFile().exists()) {
+				file.getParentFile().mkdirs();
+			}
+			request.setDestinationInExternalPublicDir(Environment.getExternalStorageDirectory().getAbsolutePath()+"/yuqing/", "yuqing.apk");
+			long refernece = downloadManager.enqueue(request);
+			PreManager.put(MainActivity.this.getApplicationContext(),AppContext.KEY_REFERNECE,refernece);
+		} catch (Exception exception) {
+			CommonUtils.showToast("更新失败");
+		}
+
+	}
 }
